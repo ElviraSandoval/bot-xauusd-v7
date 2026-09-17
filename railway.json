@@ -1,0 +1,4 @@
+{
+  "build": { "builder": "railpack" },
+  "deploy": { "startCommand": "python bot-nube/bot_oro_V7_FINAL.py" }
+}
