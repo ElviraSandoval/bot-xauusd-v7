@@ -1,3 +1,6 @@
 yfinance
+ta
 requests
 pytz
+pandas
+numpy
