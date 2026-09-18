@@ -6,7 +6,6 @@ import requests
 from datetime import datetime, timedelta
 import pytz
 
-# --- TUS DATOS YA PUESTOS ---
 TOKEN = "8041810198:AAFdZRH4DunmMlUkJTwWFuhIdPbPLe-QhSc"
 CHAT_ID = "6560153830"
 SYMBOL = "GC=F"
@@ -28,27 +27,14 @@ def crear_mensaje_pro(senal, precio, adx, rsi, score, motivos, soporte):
     entra_antes = (ahora + timedelta(seconds=70)).strftime("%I:%M:%S %p")
     expira = (ahora + timedelta(minutes=5)).strftime("%I:%M:%S %p")
     hora_saltillo = ahora.strftime("%I:%M:%S %p")
-
     if senal == "CALL":
         bloque = "🟩🟩🟩 C O M P R A 🟩🟩🟩\n      ⬆️⬆️⬆️ CALL ⬆️⬆️⬆️\n🟩🟩🟩 C O M P R A 🟩🟩🟩"
     else:
         bloque = "🟥🟥🟥 V E N T A 🟥🟥🟥\n      ⬇️⬇️⬇️ PUT ⬇️⬇️⬇️\n🟥🟥🟥 V E N T A 🟥🟥🟥"
-
     dist_soporte = abs(precio - soporte) / precio * 100
-
-    msg = f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-    msg += f"🔥 XAUUSD 🥇 {score}/4 FUERTE 🔥\n"
-    msg += f"━━━━━━━━━━━━━━━━━━━━━━━\n"
-    msg += f"{bloque}\n"
-    msg += f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    msg += f"💰 Precio: ${precio:.2f}\n"
-    msg += f"📍 Soporte: ${soporte:.2f} ({dist_soporte:.2f}% cerca)\n"
-    msg += f"📊 ADX: {adx:.1f} | RSI: {rsi:.1f}\n"
-    msg += f"⭐ Calidad: {score}/4\n\n"
-    msg += f"📝 Motivos: " + " | ".join(motivos) + f"\n\n"
-    msg += f"⏰ Saltillo: {hora_saltillo}\n"
-    msg += f"🚪 Entra ANTES de: {entra_antes}\n"
-    msg += f"🎯 Expira: {expira} (5M)"
+    msg = f"━━━━━━━━━━━━━━━━━━━━━━━\n🔥 XAUUSD 🥇 {score}/4 FUERTE 🔥\n━━━━━━━━━━━━━━━━━━━━━━━\n{bloque}\n━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg += f"💰 Precio: ${precio:.2f}\n📍 Soporte: ${soporte:.2f} ({dist_soporte:.2f}% cerca)\n📊 ADX: {adx:.1f} | RSI: {rsi:.1f}\n⭐ Calidad: {score}/4\n\n"
+    msg += f"📝 Motivos: " + " | ".join(motivos) + f"\n\n⏰ Saltillo: {hora_saltillo}\n🚪 Entra ANTES de: {entra_antes}\n🎯 Expira: {expira} (5M)"
     return msg
 
 def analizar():
@@ -61,19 +47,23 @@ def analizar():
     df_5m['EMA21'] = ta.ema(df_5m['Close'], length=21)
     df_5m['EMA50'] = ta.ema(df_5m['Close'], length=50)
     df_5m['RSI'] = ta.rsi(df_5m['Close'], length=14)
-    adx_5m = ta.adx(df_5m['High'], df_5m['Low'], df_5m['Close'], length=14)
-    df_5m = pd.concat([df_5m, adx_5m], axis=1)
-    bb = ta.bbands(df_5m['Close'], length=20)
-    df_5m['BB_UP'] = bb['BBU_20_2.0']
-    df_5m['BB_LOW'] = bb['BBL_20_2.0']
-    df_5m['SOPORTE'] = df_5m['Low'].rolling(20).min()
+    
+    # --- CORRECCION DEL ERROR BBU ---
+    bb = ta.bbands(df_5m['Close'], length=20, std=2)
+    # Esto agarra las columnas sin importar como se llamen
+    df_5m['BB_LOW'] = bb.iloc[:,0]
+    df_5m['BB_MID'] = bb.iloc[:,1]
+    df_5m['BB_UP'] = bb.iloc[:,2]
+    # --- FIN CORRECCION ---
 
+    adx_df = ta.adx(df_5m['High'], df_5m['Low'], df_5m['Close'], length=14)
+    df_5m = pd.concat([df_5m, adx_df], axis=1)
+    df_5m['SOPORTE'] = df_5m['Low'].rolling(20).min()
     df_15m['EMA21'] = ta.ema(df_15m['Close'], length=21)
     
     last = df_5m.iloc[-1]
     last_15 = df_15m.iloc[-1]
     hora_vela = str(df_5m.index[-1])
-
     score_call = 0
     score_put = 0
     motivos = []
@@ -108,7 +98,6 @@ def analizar():
         motivos.append(f"RSI {last['RSI']:.1f} + Rechazo BB")
     
     soporte = last['SOPORTE']
-
     if score_call >= 3:
         return "CALL", last['Close'], last['ADX_14'], last['RSI'], hora_vela, motivos, score_call, soporte
     elif score_put >= 3:
@@ -116,19 +105,16 @@ def analizar():
     else:
         return None, last['Close'], last['ADX_14'], last['RSI'], hora_vela, motivos, 0, soporte
 
-print("BOT V10 PRO INICIADO...")
+print("BOT V10.1 PRO INICIADO - ERROR BBU CORREGIDO")
 
 while True:
     try:
         senal, precio, adx, rsi, hora_vela, motivos, score, soporte = analizar()
         ahora = time.time()
-
         print(f"{datetime.now().strftime('%H:%M:%S')} | {precio:.2f} | ADX {adx:.1f} | Score {score}")
-
         if hora_vela == ultima_vela or (ahora - ultimo_envio < COOLDOWN):
             time.sleep(10)
             continue
-
         if senal:
             msg = crear_mensaje_pro(senal, precio, adx, rsi, score, motivos, soporte)
             send_tg(msg)
