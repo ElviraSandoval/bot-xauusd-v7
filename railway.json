@@ -1,4 +1,10 @@
 {
-  "build": { "builder": "railpack" },
-  "deploy": { "startCommand": "python bot-nube/bot_oro_V7_FINAL.py" }
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "nixpacks"
+  },
+  "deploy": {
+    "startCommand": "python bot_oro_V7_FINAL.py",
+    "restartPolicyType": "always"
+  }
 }
