@@ -1,6 +1,5 @@
 yfinance
-ta
+pandas
+pandas_ta
 requests
 pytz
-pandas
-numpy
